@@ -1,6 +1,5 @@
 import os
 import time
-import sys
 from obswebsocket import obsws, requests  # noqa: E402
 from websockets_auth import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PASSWORD
 
@@ -17,13 +16,12 @@ class OBSWebsocketsManager:
         try:
             self.ws.connect()
             self.connected = True
-        except:
-            print("\nPANIC!!\nCOULD NOT CONNECT TO OBS!\nDouble check that you have OBS open and that your websockets server is enabled in OBS.")
-            if os.getenv('CHATGOD_ALLOW_NO_OBS') == '1':
-                print("CHATGOD_ALLOW_NO_OBS=1 set; continuing without OBS for local smoke test.\n")
+        except Exception as exc:
+            print(f"\nPANIC!!\nCOULD NOT CONNECT TO OBS!\nDouble check that you have OBS open and that your websockets server is enabled in OBS. Error: {exc}")
+            if os.getenv('CHATGOD_ALLOW_NO_OBS', '1') == '1':
+                print("CHATGOD_ALLOW_NO_OBS=1 set; continuing without OBS.\n")
                 return
-            time.sleep(10)
-            sys.exit()
+            raise
         print("Connected to OBS Websockets!\n")
 
     def disconnect(self):

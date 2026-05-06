@@ -1,59 +1,120 @@
 # ChatGodApp
 
-Written by DougDoug, with help from Banana!
-You are welcome to adapt/use this code for whatever you'd like. Credit is appreciated but not necessary.
+Written by DougDoug, with help from Banana. Adapted here for GaryDavid's Kick channel.
 
 ## SETUP
-1) This was written in Python 3.9.2. Install page here: https://www.python.org/downloads/release/python-392/
 
-2) Run "pip install -r requirements.txt" to install all modules.
+1) Python
 
-On newer Python versions, the requirements include two compatibility fixes:
-- `audioop-lts` restores the `audioop` module removed in Python 3.13.
-- `twitchio<3` keeps the app on the TwitchIO 2.x API this code uses.
+The original app was written for Python 3.9.2. It now also includes compatibility for newer Python versions such as Python 3.13.
 
-3) This uses the twitchio module to connect to your Twitch channel.
-First you must generate a Access Token for your account. You can do this at: https://twitchtokengenerator.com/ , just make sure the Access Token has chat:read and chat:edit enabled.
-Once you've generated an Access Token, set it as a windows environment variable named TWITCH_ACCESS_TOKEN.
-Then update the TWITCH_CHANNEL_NAME variable in chat_god_app.py to the name of the twitch channel you are connecting to.
-
-4) This uses Microsoft Azure's TTS service for the text-to-speech voices. 
-First you must make an account and sign up for Microsoft Azure's services.
-Then use their site to generate an access key and region for the text-to-speech service.
-Then, set these as windows environment variables named AZURE_TTS_KEY and AZURE_TTS_REGION.
-
-5) Optionally, you can use OBS Websockets and an OBS plugin to make images move while talking.
-First open up OBS. Make sure you're running version 28.X or later.
-Click Tools, then WebSocket Server Settings.
-Make sure "Enable WebSocket server" is checked. Make sure Server Port is '4455', and set the Server Password to 'TwitchChat9'.
-Next install the Move OBS plugin: https://obsproject.com/forum/resources/move.913/
-Now you can use the plugin to add a filter to an audio source that will change an image's transform based on the audio waveform.
-For example, I have a filter that will move each of the player images whenever text-to-speech audio is playing.
-Lastly, in the voices_manager.py code, update the OBS section so that it will turn the corresponding filters on and off when text-to-speech audio is being played.
-Note that OBS must be open when you're running this code, otherwise OBS WebSockets won't be able to connect.
-If you don't need the images to move while talking, you can just delete the OBS portions of the code.
-
-For a local UI smoke test without real Twitch/Azure/OBS/audio hardware, you can bypass those services:
+2) Install dependencies
 
 ```bash
+pip install -r requirements.txt
+```
+
+If your system Python does not have pip/venv support, `uv` works well:
+
+```bash
+uv venv
+. .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+3) Kick chat
+
+This version uses public Kick chat, not Twitch. The default Kick channel is:
+
+```txt
+garydavid
+```
+
+You can override it with:
+
+```bash
+KICK_CHANNEL_NAME='garydavid'
+```
+
+Kick chat is resolved in the browser and connected through Kick's public Pusher websocket channel. No Twitch token is needed.
+
+4) Azure Text-to-Speech
+
+This uses Microsoft Azure's TTS service for the text-to-speech voices.
+
+Set these environment variables for real TTS:
+
+```bash
+AZURE_TTS_KEY='your-key'
+AZURE_TTS_REGION='your-region'
+```
+
+For local UI testing without Azure/audio hardware, use:
+
+```bash
+CHATGOD_SKIP_TTS=1
+```
+
+5) OBS WebSockets
+
+OBS integration is optional. If OBS is not connected, the app can continue with OBS disabled.
+
+Optional OBS variables:
+
+```bash
+OBS_WEBSOCKET_HOST='localhost'
+OBS_WEBSOCKET_PORT='4455'
+OBS_WEBSOCKET_PASSWORD='your-password'
+```
+
+For local testing without OBS:
+
+```bash
+CHATGOD_ALLOW_NO_OBS=1
+```
+
+## LOCAL SMOKE TEST
+
+```bash
+cd /opt/data/projects/ChatGodApp
+. .venv/bin/activate
 SDL_AUDIODRIVER=dummy \
 XDG_RUNTIME_DIR=/tmp \
 CHATGOD_ALLOW_NO_OBS=1 \
 CHATGOD_SKIP_TTS=1 \
-TWITCH_ACCESS_TOKEN='oauth:dummy' \
+KICK_CHANNEL_NAME='garydavid' \
 python chat_god_app.py
 ```
 
-This mode only verifies that the Flask/Socket.IO UI starts at http://127.0.0.1:5000. Full Twitch chat, Azure TTS, audio playback, and OBS integration still require the real credentials/services above.
+Then open:
+
+```txt
+http://127.0.0.1:5000
+```
+
+This verifies that the Flask/Socket.IO UI starts. Full live chat requires the browser to be able to access Kick's public channel endpoint and websocket. If Kick blocks automatic channel lookup in your environment, set `KICK_CHATROOM_ID` to a known Kick chatroom id and the browser will skip the lookup step.
 
 ## BASIC APP USAGE
 
-1) Run chat_god_app.py and then open up http://127.0.0.1:5000 on a browser or as a browser source in OBS
+1) Run `chat_god_app.py` and open `http://127.0.0.1:5000` in a browser or OBS browser source.
 
-2) You can enter a user's name in the "Choose User" field and hit enter to manually assign them as that player.
-Alternatively, viewers can join the pool of potential players by typing !player1, !player2, or !player3.
-Then, when you hit Pick Random, it will pick one of the viewers randomly from that player pool.
+2) Viewers join the pool of potential players by typing `!player1`, `!player2`, or `!player3` in Kick chat.
 
-3) Once a user is picked, their twitch messages will be automatically read out loud via Azure TTS.
-You can change the voice and the voice style using the drop down menus on the web app.
-If a user starts their message with (angry), (cheerful), (excited), (hopeful), (sad), (shouting), (shout), (terrified), (unfriendly), (whispering), (whisper), or (random), it will automatically use that voice style.
+3) Click Pick Random to pick one viewer from the matching player pool.
+
+4) You can manually assign a user by typing their Kick username into a Choose User field and pressing Enter.
+
+5) Once a user is picked, their Kick chat messages will be shown in the UI and read out loud via Azure TTS when TTS is enabled.
+
+6) Voice and voice style can be changed with the dropdowns. Messages can also start with one of these prefixes to choose a style:
+
+```txt
+(angry), (cheerful), (excited), (hopeful), (sad), (shouting), (shout), (terrified), (unfriendly), (whispering), (whisper), (random)
+```
+
+## TESTS
+
+```bash
+. .venv/bin/activate
+pytest tests -q
+```
