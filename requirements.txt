@@ -9,4 +9,5 @@ pygame
 pygame_ce
 pytz
 soundfile
-twitchio
+audioop-lts; python_version >= "3.13"
+twitchio<3

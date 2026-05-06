@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from twitchio.ext import commands
 from twitchio import *
 from datetime import datetime, timedelta
@@ -219,4 +221,4 @@ if __name__=='__main__':
     bot_thread = threading.Thread(target=startTwitchBot)
     bot_thread.start()
     
-    socketio.run(app)
+    socketio.run(app, allow_unsafe_werkzeug=True)

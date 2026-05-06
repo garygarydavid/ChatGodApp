@@ -1,3 +1,5 @@
+import os
+
 from audio_player import AudioManager
 from obs_websockets import OBSWebsocketsManager
 from azure_text_to_speech import AzureTTSManager
@@ -15,6 +17,9 @@ class TTSManager:
     user3_voice_style = "random"
 
     def __init__(self):
+        if os.getenv('CHATGOD_SKIP_TTS') == '1' or os.getenv('CHATGOD_SKIP_STARTUP_TTS') == '1':
+            print("CHATGOD_SKIP_TTS/CHATGOD_SKIP_STARTUP_TTS set; skipping startup TTS for local smoke test.")
+            return
         file_path = self.azuretts_manager.text_to_audio("Chat God App is now running!") # Say some shit when the app starts
         self.audio_manager.play_audio(file_path, True, True, True)
 
@@ -35,6 +40,9 @@ class TTSManager:
             self.user3_voice_style = voice_style
 
     def text_to_audio(self, text, user_number):
+        if os.getenv('CHATGOD_SKIP_TTS') == '1':
+            print(f"CHATGOD_SKIP_TTS=1 set; skipping TTS for user {user_number}: {text}")
+            return
         if user_number == "1":
             voice_name = self.user1_voice_name
             voice_style = self.user1_voice_style
@@ -46,6 +54,8 @@ class TTSManager:
             voice_style = self.user3_voice_style
 
         tts_file = self.azuretts_manager.text_to_audio(text, voice_name, voice_style)
+        if tts_file is None:
+            return
 
         # OPTIONAL: Use OBS Websockets to enable the Move plugin filter
         if user_number == "1":

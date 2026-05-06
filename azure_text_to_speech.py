@@ -51,6 +51,10 @@ class AzureTTSManager:
 
     def __init__(self):
         pygame.init()
+        self.tts_disabled = os.getenv('CHATGOD_SKIP_TTS') == '1'
+        if self.tts_disabled:
+            print("CHATGOD_SKIP_TTS=1 set; Azure/gTTS audio generation disabled for local smoke test.")
+            return
         # Creates an instance of a speech config with specified subscription key and service region.
         # Replace with your own subscription key and service region (e.g., "westus").
         self.azure_speechconfig = speechsdk.SpeechConfig(subscription=os.getenv('AZURE_TTS_KEY'), region=os.getenv('AZURE_TTS_REGION'))
@@ -61,6 +65,9 @@ class AzureTTSManager:
 
     # Returns the path to the new .wav file
     def text_to_audio(self, text: str, voice_name="random", voice_style="random"):
+        if getattr(self, 'tts_disabled', False):
+            print(f"CHATGOD_SKIP_TTS=1 set; skipping TTS for message: {text}")
+            return None
         if voice_name == "random":
             voice_name = random.choice(AZURE_VOICES)
         if voice_style == "random":

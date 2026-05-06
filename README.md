@@ -8,6 +8,10 @@ You are welcome to adapt/use this code for whatever you'd like. Credit is apprec
 
 2) Run "pip install -r requirements.txt" to install all modules.
 
+On newer Python versions, the requirements include two compatibility fixes:
+- `audioop-lts` restores the `audioop` module removed in Python 3.13.
+- `twitchio<3` keeps the app on the TwitchIO 2.x API this code uses.
+
 3) This uses the twitchio module to connect to your Twitch channel.
 First you must generate a Access Token for your account. You can do this at: https://twitchtokengenerator.com/ , just make sure the Access Token has chat:read and chat:edit enabled.
 Once you've generated an Access Token, set it as a windows environment variable named TWITCH_ACCESS_TOKEN.
@@ -28,6 +32,19 @@ For example, I have a filter that will move each of the player images whenever t
 Lastly, in the voices_manager.py code, update the OBS section so that it will turn the corresponding filters on and off when text-to-speech audio is being played.
 Note that OBS must be open when you're running this code, otherwise OBS WebSockets won't be able to connect.
 If you don't need the images to move while talking, you can just delete the OBS portions of the code.
+
+For a local UI smoke test without real Twitch/Azure/OBS/audio hardware, you can bypass those services:
+
+```bash
+SDL_AUDIODRIVER=dummy \
+XDG_RUNTIME_DIR=/tmp \
+CHATGOD_ALLOW_NO_OBS=1 \
+CHATGOD_SKIP_TTS=1 \
+TWITCH_ACCESS_TOKEN='oauth:dummy' \
+python chat_god_app.py
+```
+
+This mode only verifies that the Flask/Socket.IO UI starts at http://127.0.0.1:5000. Full Twitch chat, Azure TTS, audio playback, and OBS integration still require the real credentials/services above.
 
 ## BASIC APP USAGE
 
