@@ -17,10 +17,10 @@ class OBSWebsocketsManager:
             self.ws.connect()
             self.connected = True
         except Exception as exc:
-            print(f"\nPANIC!!\nCOULD NOT CONNECT TO OBS!\nDouble check that you have OBS open and that your websockets server is enabled in OBS. Error: {exc}")
             if os.getenv('CHATGOD_ALLOW_NO_OBS', '1') == '1':
-                print("CHATGOD_ALLOW_NO_OBS=1 set; continuing without OBS.\n")
+                print(f"\nOBS not connected; continuing with OBS integration disabled. Error: {exc}\n")
                 return
+            print(f"\nOBS connection required but failed. Double check that OBS is open and WebSocket server is enabled. Error: {exc}\n")
             raise
         print("Connected to OBS Websockets!\n")
 
