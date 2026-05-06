@@ -1,5 +1,7 @@
 import os
 import random
+from xml.sax.saxutils import escape
+
 import azure.cognitiveservices.speech as speechsdk
 from gtts import gTTS
 from pydub import AudioSegment
@@ -51,6 +53,10 @@ class AzureTTSManager:
 
     def __init__(self):
         pygame.init()
+        self.tts_disabled = os.getenv('CHATGOD_SKIP_TTS') == '1'
+        if self.tts_disabled:
+            print("CHATGOD_SKIP_TTS=1 set; Azure/gTTS audio generation disabled for local smoke test.")
+            return
         # Creates an instance of a speech config with specified subscription key and service region.
         # Replace with your own subscription key and service region (e.g., "westus").
         self.azure_speechconfig = speechsdk.SpeechConfig(subscription=os.getenv('AZURE_TTS_KEY'), region=os.getenv('AZURE_TTS_REGION'))
@@ -59,27 +65,37 @@ class AzureTTSManager:
         # Creates a speech synthesizer. Setting audio_config to None means it wont play the synthesized text out loud.
         self.azure_synthesizer = speechsdk.SpeechSynthesizer(speech_config=self.azure_speechconfig, audio_config=None)        
 
-    # Returns the path to the new .wav file
-    def text_to_audio(self, text: str, voice_name="random", voice_style="random"):
-        if voice_name == "random":
+    def build_ssml(self, text: str, voice_name="random", voice_style="random"):
+        if voice_name == "random" or voice_name not in AZURE_VOICES:
             voice_name = random.choice(AZURE_VOICES)
         if voice_style == "random":
             voice_style = random.choice(AZURE_VOICE_STYLES)
 
-        # Change the voice style if the message includes a prefix
-        text = text.lower()
-        if text.startswith("(") and ")" in text:
-            prefix = text[0:(text.find(")")+1)]
+        # Change the voice style if the message includes a prefix. Use a lower-case
+        # copy for prefix detection, but preserve the original message casing for TTS.
+        text = str(text or "")
+        lowered_text = text.lower()
+        if lowered_text.startswith("(") and ")" in lowered_text:
+            prefix = lowered_text[0:(lowered_text.find(")")+1)]
             if prefix in AZURE_PREFIXES:
                 voice_style = AZURE_PREFIXES[prefix]
-                text = text.removeprefix(prefix)
-        if len(text) == 0:
-            print("This message was empty")
-            return
-        if voice_style == "random":
+                text = text[len(prefix):].lstrip()
+        if voice_style == "random" or voice_style not in AZURE_VOICE_STYLES:
             voice_style = random.choice(AZURE_VOICE_STYLES)
+        escaped_text = escape(text)
+        return f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xmlns:emo='http://www.w3.org/2009/10/emotionml' xml:lang='en-US'><voice name='{voice_name}'><mstts:express-as style='{voice_style}'>{escaped_text}</mstts:express-as></voice></speak>"
 
-        ssml_text = f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xmlns:emo='http://www.w3.org/2009/10/emotionml' xml:lang='en-US'><voice name='{voice_name}'><mstts:express-as style='{voice_style}'>{text}</mstts:express-as></voice></speak>"
+    # Returns the path to the new .wav file
+    def text_to_audio(self, text: str, voice_name="random", voice_style="random"):
+        if getattr(self, 'tts_disabled', False):
+            print(f"CHATGOD_SKIP_TTS=1 set; skipping TTS for message: {text}")
+            return None
+        text = str(text or "")
+        if len(text.strip()) == 0:
+            print("This message was empty")
+            return None
+
+        ssml_text = self.build_ssml(text, voice_name, voice_style)
         result = self.azure_synthesizer.speak_ssml_async(ssml_text).get()
 
         output = os.path.join(os.path.abspath(os.curdir), f"_Msg{str(hash(text))}{str(hash(voice_name))}{str(hash(voice_style))}.wav")

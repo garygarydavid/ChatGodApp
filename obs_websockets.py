@@ -1,5 +1,5 @@
+import os
 import time
-import sys
 from obswebsocket import obsws, requests  # noqa: E402
 from websockets_auth import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PASSWORD
 
@@ -8,45 +8,63 @@ from websockets_auth import WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PASSWORD
 
 class OBSWebsocketsManager:
     ws = None
+    connected = False
     
     def __init__(self):
         # Connect to websockets
         self.ws = obsws(WEBSOCKET_HOST, WEBSOCKET_PORT, WEBSOCKET_PASSWORD)
         try:
             self.ws.connect()
-        except:
-            print("\nPANIC!!\nCOULD NOT CONNECT TO OBS!\nDouble check that you have OBS open and that your websockets server is enabled in OBS.")
-            time.sleep(10)
-            sys.exit()
+            self.connected = True
+        except Exception as exc:
+            if os.getenv('CHATGOD_ALLOW_NO_OBS', '1') == '1':
+                print(f"\nOBS not connected; continuing with OBS integration disabled. Error: {exc}\n")
+                return
+            print(f"\nOBS connection required but failed. Double check that OBS is open and WebSocket server is enabled. Error: {exc}\n")
+            raise
         print("Connected to OBS Websockets!\n")
 
     def disconnect(self):
+        if not self.connected:
+            return
         self.ws.disconnect()
 
     # Set the current scene
     def set_scene(self, new_scene):
+        if not self.connected:
+            return
         self.ws.call(requests.SetCurrentProgramScene(sceneName=new_scene))
 
     # Set the visibility of any source's filters
     def set_filter_visibility(self, source_name, filter_name, filter_enabled=True):
+        if not self.connected:
+            return
         self.ws.call(requests.SetSourceFilterEnabled(sourceName=source_name, filterName=filter_name, filterEnabled=filter_enabled))
 
     # Set the visibility of any source
     def set_source_visibility(self, scene_name, source_name, source_visible=True):
+        if not self.connected:
+            return
         response = self.ws.call(requests.GetSceneItemId(sceneName=scene_name, sourceName=source_name))
         myItemID = response.datain['sceneItemId']
         self.ws.call(requests.SetSceneItemEnabled(sceneName=scene_name, sceneItemId=myItemID, sceneItemEnabled=source_visible))
 
     # Returns the current text of a text source
     def get_text(self, source_name):
+        if not self.connected:
+            return None
         response = self.ws.call(requests.GetInputSettings(inputName=source_name))
         return response.datain["inputSettings"]["text"]
 
     # Returns the text of a text source
     def set_text(self, source_name, new_text):
+        if not self.connected:
+            return
         self.ws.call(requests.SetInputSettings(inputName=source_name, inputSettings = {'text': new_text}))
 
     def get_source_transform(self, scene_name, source_name):
+        if not self.connected:
+            return None
         response = self.ws.call(requests.GetSceneItemId(sceneName=scene_name, sourceName=source_name))
         myItemID = response.datain['sceneItemId']
         response = self.ws.call(requests.GetSceneItemTransform(sceneName=scene_name, sceneItemId=myItemID))
@@ -72,6 +90,8 @@ class OBSWebsocketsManager:
     # Note: there are other transform settings, like alignment, etc, but these feel like the main useful ones.
     # Use get_source_transform to see the full list
     def set_source_transform(self, scene_name, source_name, new_transform):
+        if not self.connected:
+            return
         response = self.ws.call(requests.GetSceneItemId(sceneName=scene_name, sourceName=source_name))
         myItemID = response.datain['sceneItemId']
         self.ws.call(requests.SetSceneItemTransform(sceneName=scene_name, sceneItemId=myItemID, sceneItemTransform=new_transform))
@@ -79,14 +99,20 @@ class OBSWebsocketsManager:
     # Note: an input, like a text box, is a type of source. This will get *input-specific settings*, not the broader source settings like transform and scale
     # For a text source, this will return settings like its font, color, etc
     def get_input_settings(self, input_name):
+        if not self.connected:
+            return None
         return self.ws.call(requests.GetInputSettings(inputName=input_name))
 
     # Get list of all the input types
     def get_input_kind_list(self):
+        if not self.connected:
+            return None
         return self.ws.call(requests.GetInputKindList())
 
     # Get list of all items in a certain scene
     def get_scene_items(self, scene_name):
+        if not self.connected:
+            return None
         return self.ws.call(requests.GetSceneItemList(sceneName=scene_name))
 
 

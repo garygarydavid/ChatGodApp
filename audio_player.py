@@ -7,7 +7,12 @@ from mutagen.mp3 import MP3
 class AudioManager:
 
     def __init__(self):
-        pygame.mixer.init()
+        try:
+            pygame.mixer.init()
+            self.audio_available = True
+        except Exception as exc:
+            self.audio_available = False
+            print(f"Audio mixer unavailable; audio playback disabled: {exc}")
 
     def play_audio(self, file_path, sleep_during_playback=True, delete_file=False, play_using_music=True):
         """
@@ -17,8 +22,19 @@ class AudioManager:
         delete_file (bool): means file is deleted after playback (note that this shouldn't be used for multithreaded function calls)
         play_using_music (bool): means it will use Pygame Music, if false then uses pygame Sound instead
         """
+        if not file_path:
+            print("No audio file to play.")
+            return
+        if not getattr(self, 'audio_available', True):
+            print(f"Audio playback disabled; skipping file: {file_path}")
+            return
         print(f"Playing file with pygame: {file_path}")
-        pygame.mixer.init()
+        try:
+            pygame.mixer.init()
+        except Exception as exc:
+            self.audio_available = False
+            print(f"Audio mixer unavailable; skipping playback: {exc}")
+            return
         if play_using_music:
             # Pygame Mixer only plays one file at a time, but audio doesn't glitch
             pygame.mixer.music.load(file_path)
@@ -54,6 +70,6 @@ class AudioManager:
 
                 try:  
                     os.remove(file_path)
-                    print(f"Deleted the audio file.")
+                    print("Deleted the audio file.")
                 except PermissionError:
                     print(f"Couldn't remove {file_path} because it is being used by another process.")
